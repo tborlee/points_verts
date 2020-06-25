@@ -1,8 +1,10 @@
 import 'package:background_fetch/background_fetch.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:points_verts/services/notification.dart';
 
+import 'platform_widget.dart';
 import 'views/directory/walk_directory_view.dart';
 import 'views/settings/settings.dart';
 import 'views/walks/walks_view.dart';
@@ -51,6 +53,10 @@ class _WalksHomeScreenState extends State<WalksHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PlatformWidget(androidBuilder: _android, iosBuilder: _iOS);
+  }
+
+  Widget _android(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -65,6 +71,30 @@ class _WalksHomeScreenState extends State<WalksHomeScreen> {
         ],
       ),
       body: _pages[_selectedIndex],
+    );
+  }
+
+  Widget _iOS(BuildContext context) {
+    return CupertinoTabScaffold(
+      tabBuilder: (BuildContext context, int index) {
+        return CupertinoTabView(
+          builder: (BuildContext context) {
+            return _pages[_selectedIndex];
+        });
+      },
+      tabBar: CupertinoTabBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), title: Text("Calendrier")),
+          BottomNavigationBarItem(
+              icon: Icon(CupertinoIcons.book), title: Text("Annuaire")),
+
+          BottomNavigationBarItem(
+              icon: Icon(CupertinoIcons.settings), title: Text("Paramètres"))
+        ],
+      ),
     );
   }
 

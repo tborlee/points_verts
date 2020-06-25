@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:points_verts/platform_widget.dart';
 import 'package:points_verts/services/database.dart';
 import 'package:points_verts/views/loading.dart';
 import 'package:points_verts/views/walks/place_select.dart';
@@ -214,6 +216,10 @@ class _WalksViewState extends State<WalksView> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    return PlatformWidget(androidBuilder: _android, iosBuilder: _iOS);
+  }
+
+  Widget _android(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -232,6 +238,25 @@ class _WalksViewState extends State<WalksView> with WidgetsBindingObserver {
       ),
       body: _buildTab(),
     );
+  }
+
+  Widget _iOS(BuildContext context) {
+    return CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+            middle: Text('Calendrier'),
+            trailing: CupertinoButton(
+                padding: EdgeInsets.all(0.0),
+                onPressed: () {
+                  setState(() {
+                    _viewType = _viewType == ViewType.list
+                        ? ViewType.map
+                        : ViewType.list;
+                  });
+                },
+                child: _viewType == ViewType.list
+                    ? Text("Carte")
+                    : Text("Liste"))),
+        child: Scaffold(body: _buildTab()));
   }
 
   Widget _buildTab() {

@@ -5,8 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong/latlong.dart';
+import 'package:mapbox_gl/mapbox_gl.dart';
 
 import '../models/address_suggestion.dart';
 import '../models/trip.dart';
@@ -17,6 +16,80 @@ import '../models/walk.dart';
 import 'trip_cache_manager.dart';
 
 String _token = DotEnv().env['MAPBOX_TOKEN'];
+
+class Mapbox extends StatefulWidget {
+  Mapbox(
+      {this.centerLat = 50.3155646,
+        this.centerLong = 5.009682,
+        this.zoom = 7.5,
+        this.interactive = true,
+        this.symbols});
+
+  final double centerLat;
+  final double centerLong;
+  final double zoom;
+  final bool interactive;
+  final List<CircleOptions> symbols;
+
+  @override
+  _MapboxState createState() => _MapboxState();
+}
+
+class _MapboxState extends State<Mapbox> {
+  MapboxMapController _mapController;
+
+  @override
+  void dispose() {
+    if(_mapController != null) {
+      _mapController.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onMapCreated(MapboxMapController controller) async {
+    print("onMapCreated");
+    this._mapController = controller;
+    await _mapController.clearSymbols();
+    await _mapController.clearCircles();
+    _mapController..onCircleTapped.add(_onCircleTapped);
+  }
+
+  void _onCircleTapped(Circle circle) {
+    print(circle);
+  }
+
+  void _onMapIdle() {
+    print("_onMapIdle");
+    _mapController.clearCircles();
+  }
+
+  void _onStyleLoadedCallback() async {
+    print("_onStyleLoadedCallback");
+    if (mounted && widget.symbols != null && _mapController != null) {
+      for (CircleOptions symbol in widget.symbols) {
+        await _mapController.addCircle(symbol);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MapboxMap(
+      accessToken: _token,
+      onMapCreated: _onMapCreated,
+      onMapIdle: _onMapIdle,
+      onStyleLoadedCallback: _onStyleLoadedCallback,
+      tiltGesturesEnabled: widget.interactive,
+      rotateGesturesEnabled: widget.interactive,
+      scrollGesturesEnabled: widget.interactive,
+      zoomGesturesEnabled: widget.interactive,
+      initialCameraPosition: CameraPosition(
+          target: LatLng(widget.centerLat, widget.centerLong),
+          zoom: widget.zoom),
+    );
+  }
+}
+
 
 Future<void> retrieveTrips(
     double fromLong, double fromLat, List<Walk> walks) async {
@@ -48,31 +121,6 @@ Future<void> retrieveTrips(
       }
     }
   }
-}
-
-Widget retrieveMap(List<Marker> markers, Brightness brightness,
-    {double centerLat = 50.3155646,
-    double centerLong = 5.009682,
-    double zoom = 7.5,
-    bool interactive = true}) {
-  return FlutterMap(
-    options: new MapOptions(
-        center: LatLng(centerLat, centerLong),
-        zoom: zoom,
-        interactive: interactive),
-    layers: [
-      new TileLayerOptions(
-        urlTemplate: "https://api.tiles.mapbox.com/v4/"
-            "{id}/{z}/{x}/{y}@2x.png?access_token={accessToken}",
-        additionalOptions: {
-          'accessToken': _token,
-          'id':
-              brightness == Brightness.dark ? 'mapbox.dark' : 'mapbox.streets',
-        },
-      ),
-      new MarkerLayerOptions(markers: markers),
-    ],
-  );
 }
 
 Future<List<AddressSuggestion>> retrieveSuggestions(

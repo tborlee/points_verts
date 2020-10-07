@@ -44,7 +44,7 @@ android {
 
     defaultConfig {
         applicationId "dev.alpagaga.points_verts"
-        minSdkVersion 16
+        minSdkVersion 20
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

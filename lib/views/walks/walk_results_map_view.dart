@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong/latlong.dart';
+import 'package:mapbox_gl/mapbox_gl.dart';
+import 'package:points_verts/services/mapbox.dart';
 
 import '../loading.dart';
-import '../../services/mapbox.dart';
 import '../../models/walk.dart';
-import 'walk_icon.dart';
 import 'walks_view.dart';
 import 'walk_list_error.dart';
 import 'walk_tile.dart';
 
-class WalkResultsMapView extends StatelessWidget {
+class WalkResultsMapView extends StatefulWidget {
   WalkResultsMapView(this.walks, this.position, this.currentPlace,
       this.selectedWalk, this.onWalkSelect, this.refreshWalks);
 
@@ -22,51 +20,8 @@ class WalkResultsMapView extends StatelessWidget {
   final Walk selectedWalk;
   final Function(Walk) onWalkSelect;
   final Function refreshWalks;
-  final List<Marker> markers = List<Marker>();
-
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: walks,
-      builder: (BuildContext context, AsyncSnapshot<List<Walk>> snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.hasData) {
-            markers.clear();
-            for (Walk walk in snapshot.data) {
-              if (walk.lat != null && walk.long != null) {
-                markers.add(_buildMarker(walk, context));
-              }
-            }
-            if (position != null) {
-              markers.add(Marker(
-                point: new LatLng(position.latitude, position.longitude),
-                builder: (ctx) => new Container(
-                    child: Icon(currentPlace == Places.current
-                        ? Icons.location_on
-                        : Icons.home)),
-              ));
-            }
-
-            return Stack(
-              children: <Widget>[
-                retrieveMap(markers, Theme.of(context).brightness),
-                _buildWalkInfo(selectedWalk),
-              ],
-            );
-          } else if (snapshot.hasError) {
-            return WalkListError(refreshWalks);
-          }
-        }
-        return Stack(
-          children: <Widget>[
-            retrieveMap(markers, Theme.of(context).brightness),
-            Loading(),
-            _buildWalkInfo(selectedWalk),
-          ],
-        );
-      },
-    );
-  }
+  _WalkResultsMapViewState createState() => _WalkResultsMapViewState();
 
   static Widget _buildWalkInfo(Walk walk) {
     if (walk == null) {
@@ -82,22 +37,80 @@ class WalkResultsMapView extends StatelessWidget {
               )));
     }
   }
+}
 
-  Marker _buildMarker(Walk walk, BuildContext context) {
-    return Marker(
-      width: 25,
-      height: 25,
-      point: new LatLng(walk.lat, walk.long),
-      builder: (ctx) => RawMaterialButton(
-        child: WalkIcon(walk, color: Colors.white, size: 20),
-        shape: new CircleBorder(),
-        elevation: selectedWalk == walk ? 5.0 : 2.0,
-        // TODO: find a way to not hardcode the colors here
-        fillColor: selectedWalk == walk ? Colors.greenAccent : Colors.green,
-        onPressed: () {
-          onWalkSelect(walk);
-        },
-      ),
+class _WalkResultsMapViewState extends State<WalkResultsMapView> {
+  MapboxMapController mapController;
+
+  @override
+  void dispose() {
+    if (mapController != null) {
+      mapController.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onMapCreated(MapboxMapController controller) async {
+    if (controller != null) {
+      mapController = controller;
+    }
+  }
+
+  void _onStyleLoadedCallback() async {
+    if (mapController != null) {
+      await mapController.clearCircles();
+      if (widget.position != null) {
+        mapController.addCircle(CircleOptions(
+            geometry:
+            LatLng(widget.position.latitude, widget.position.longitude)));
+      }
+      List<Walk> walks = await widget.walks;
+      for (Walk walk in walks) {
+        if (walk.lat != null && walk.long != null) {
+          print("adding walk on map");
+          mapController.addCircle(
+              CircleOptions(geometry: LatLng(walk.lat, walk.long)));
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget map = MapboxMap(
+        styleString: MapboxStyles.MAPBOX_STREETS,
+        initialCameraPosition: CameraPosition(
+            target: LatLng(
+              50.3155646,
+              5.009682,
+            ),
+            zoom: 7),
+        onStyleLoadedCallback: _onStyleLoadedCallback,
+        onMapCreated: _onMapCreated);
+    return FutureBuilder(
+      future: widget.walks,
+      builder: (BuildContext context, AsyncSnapshot<List<Walk>> snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          _onStyleLoadedCallback();
+          if (snapshot.hasData) {
+            return Stack(
+              children: <Widget>[
+                map,
+                WalkResultsMapView._buildWalkInfo(widget.selectedWalk),
+              ],
+            );
+          } else if (snapshot.hasError) {
+            return WalkListError(widget.refreshWalks);
+          }
+        }
+        return Stack(
+          children: <Widget>[
+            map,
+            Loading(),
+            WalkResultsMapView._buildWalkInfo(widget.selectedWalk),
+          ],
+        );
+      },
     );
   }
 }

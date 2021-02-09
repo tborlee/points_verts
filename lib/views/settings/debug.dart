@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:points_verts/services/firebase.dart';
 import 'package:points_verts/services/notification.dart';
 import 'package:points_verts/services/prefs.dart';
 
@@ -20,7 +22,9 @@ class Debug extends StatelessWidget {
             Divider(height: 0.5),
             _PendingNotificationsTile(),
             Divider(height: 0.5),
-            _LastBackgroundFetch()
+            _LastBackgroundFetch(),
+            Divider(height: 0.5),
+            _FirebaseToken()
           ],
         ));
   }
@@ -99,6 +103,32 @@ class _LastBackgroundFetch extends StatelessWidget {
             return ListTile(
               title: Text("Dernière actualisation en arrière-plan"),
               subtitle: Text("${formatDate(snapshot.data)} (heure locale)"),
+            );
+          }
+          return SizedBox.shrink();
+        });
+  }
+}
+
+class _FirebaseToken extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+        future: GetIt.I.getAsync<FirebaseManager>(),
+        builder:
+            (BuildContext context, AsyncSnapshot<FirebaseManager> snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            return ListTile(
+              title: Text("Jeton Firebase"),
+              subtitle: FutureBuilder(
+                  future: snapshot.data.getToken(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<String> snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Text(snapshot.data);
+                    }
+                    return SizedBox.shrink();
+                  }),
             );
           }
           return SizedBox.shrink();

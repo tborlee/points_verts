@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:points_verts/services/notification.dart';
 import 'package:points_verts/services/prefs.dart';
 import 'package:points_verts/views/loading.dart';
+import 'package:points_verts/views/my_walks/my_walks_view.dart';
 import 'package:points_verts/views/walks/walk_utils.dart';
 
 import 'views/directory/walk_directory_view.dart';
@@ -17,7 +18,7 @@ class WalksHomeScreen extends StatefulWidget {
 
 class _WalksHomeScreenState extends State<WalksHomeScreen>
     with WidgetsBindingObserver {
-  List<Widget> _pages = [WalksView(), WalkDirectoryView(), Settings()];
+  List<Widget> _pages = [WalksView(), WalkDirectoryView(), MyWalksView(), Settings()];
   int _selectedIndex = 0;
   bool _loading = true;
 
@@ -75,17 +76,13 @@ class _WalksHomeScreenState extends State<WalksHomeScreen>
     }).catchError((e) {
       print('[BackgroundFetch] configure ERROR: $e');
     });
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: <BottomNavigationBarItem>[
@@ -93,6 +90,8 @@ class _WalksHomeScreenState extends State<WalksHomeScreen>
               icon: Icon(Icons.calendar_today), label: "Calendrier"),
           const BottomNavigationBarItem(
               icon: Icon(Icons.import_contacts), label: "Annuaire"),
+          const BottomNavigationBarItem(
+              icon: Icon(Icons.directions_walk), label: "Mes Marches"),
           const BottomNavigationBarItem(
               icon: Icon(Icons.settings), label: "Paramètres"),
         ],

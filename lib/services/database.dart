@@ -1,4 +1,5 @@
 import 'package:path/path.dart';
+import 'package:points_verts/models/my_walk.dart';
 import 'package:points_verts/models/walk.dart';
 import 'package:points_verts/models/walk_filter.dart';
 import 'package:points_verts/services/prefs.dart';
@@ -25,25 +26,35 @@ class DBProvider {
         join(await getDatabasesPath(), 'points_verts_database.db'),
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
-        version: 6);
+        version: 7);
   }
 
-  Future<void> _createWalkTable(Database db) async {
+  Future<void> _createWalksTable(Database db) async {
     await PrefsProvider.prefs.setString("last_walk_update", null);
-    await db.execute("DROP table IF EXISTS walks");
+    await db.execute("DROP TABLE IF EXISTS walks");
     await db.execute(
         "CREATE TABLE walks(id INTEGER PRIMARY KEY, city TEXT, entity TEXT, type TEXT, province TEXT, date DATE, longitude DOUBLE, latitude DOUBLE, status TEXT, meeting_point TEXT, meeting_point_info TEXT, organizer TEXT, contact_first_name TEXT, contact_last_name TEXT, contact_phone_number TEXT, ign TEXT, transport TEXT, fifteen_km TINYINT, wheelchair TINYINT, stroller TINYINT, extra_orientation TINYINT, extra_walk TINYINT, guided TINYINT, bike TINYINT, mountain_bike TINYINT, water_supply TINYINT, be_wapp TINYINT, last_updated DATETIME)");
     await db.execute("CREATE INDEX walks_date_index on walks(date)");
     await db.execute("CREATE INDEX walks_city_index on walks(city)");
   }
 
+  Future<void> _createMyWalksTable(Database db) async {
+    await db.execute("DROP TABLE IF EXISTS my_walks");
+    await db.execute(
+        "CREATE TABLE my_walks(id INTEGER PRIMARY KEY, walk_id INTEGER, score TINYINT, created_at DATETIME, updated_at DATETIME, FOREIGN KEY (walk_id) REFERENCES walks(id))");
+  }
+
   void _onCreate(Database db, int version) async {
-    await _createWalkTable(db);
+    await _createWalksTable(db);
+    await _createMyWalksTable(db);
   }
 
   void _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion <= 5) {
-      await _createWalkTable(db);
+      await _createWalksTable(db);
+    }
+    if (oldVersion <= 6) {
+      await _createMyWalksTable(db);
     }
   }
 
@@ -73,6 +84,18 @@ class DBProvider {
     await batch.commit();
   }
 
+  Future<void> insertMyWalk(MyWalk myWalk) async {
+    log("Inserting my walk in database", name: TAG);
+    final Database db = await database;
+    await db.insert("my_walks", myWalk.toMap());
+  }
+
+  Future<int> deleteMyWalk(MyWalk myWalk) async {
+    log("Deleting my walk with id ${myWalk.id}");
+    final Database db = await database;
+    return db.delete("my_walks", where: "id = ?", whereArgs: [myWalk.id]);
+  }
+
   Future<int> deleteOldWalks() async {
     final now = DateTime.now();
     final lastMidnight = new DateTime(now.year, now.month, now.day);
@@ -94,7 +117,7 @@ class DBProvider {
       maps = await db.query('walks', orderBy: "city ASC");
     }
     return List.generate(maps.length, (i) {
-      return _fromDb(maps, i);
+      return _walkFromDb(maps, i);
     });
   }
 
@@ -148,7 +171,7 @@ class DBProvider {
           where: 'date = ?', whereArgs: [date.toIso8601String()]);
     }
     return List.generate(maps.length, (i) {
-      return _fromDb(maps, i);
+      return _walkFromDb(maps, i);
     });
   }
 
@@ -157,13 +180,37 @@ class DBProvider {
     final List<Map<String, dynamic>> maps =
         await db.query('walks', where: 'id = ?', whereArgs: [id]);
     if (maps.length == 1) {
-      return _fromDb(maps, 0);
+      return _walkFromDb(maps, 0);
     } else {
       return null;
     }
   }
 
-  Walk _fromDb(List<Map<String, dynamic>> maps, int i) {
+  Future<List<Walk>> getWalksByIds(List<int> ids) async {
+    final Database db = await database;
+    List<Map<String, dynamic>> maps =
+        await db.query("walks", where: 'id IN (${ids.join(', ')})');
+    return List.generate(maps.length, (i) {
+      return _walkFromDb(maps, i);
+    });
+  }
+
+  Future<List<MyWalk>> getMyWalks() async {
+    log("Retrieving my walks from database", name: TAG);
+    final Database db = await database;
+    List<Map<String, dynamic>> maps = await db.query('my_walks');
+    List<int> walkIds =
+        List.generate(maps.length, (index) => maps[index]['walk_id']);
+    List<Walk> walks = await getWalksByIds(walkIds);
+    return List.generate(maps.length, (i) {
+      Walk walk = walks.firstWhere(
+          (element) => element.id == maps[i]['walk_id'],
+          orElse: () => null);
+      return _myWalkFromDb(maps, i, walk);
+    });
+  }
+
+  Walk _walkFromDb(List<Map<String, dynamic>> maps, int i) {
     return Walk(
         id: maps[i]['id'],
         city: maps[i]['city'],
@@ -195,5 +242,14 @@ class DBProvider {
         waterSupply: maps[i]['water_supply'] == 1 ? true : false,
         beWapp: maps[i]['be_wapp'] == 1 ? true : false,
         lastUpdated: DateTime.parse(maps[i]['last_updated']));
+  }
+
+  MyWalk _myWalkFromDb(List<Map<String, dynamic>> maps, int i, Walk walk) {
+    return MyWalk(
+        id: maps[i]['id'],
+        walk: walk,
+        score: maps[i]['score'],
+        createdAt: DateTime.parse(maps[i]['created_at']),
+        updatedAt: DateTime.parse(maps[i]['updated_at']));
   }
 }

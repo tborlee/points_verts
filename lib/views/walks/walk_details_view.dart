@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:points_verts/models/my_walk.dart';
+import 'package:points_verts/services/database.dart';
 import 'package:points_verts/services/mapbox.dart';
 import 'package:points_verts/views/walks/walk_details.dart';
 
@@ -17,6 +19,14 @@ class WalkDetailsView extends StatelessWidget {
       appBar: AppBar(
         title: FittedBox(
             fit: BoxFit.fitWidth, child: Text("${walk.type} à ${walk.city}")),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.favorite_outline),
+            onPressed: () {
+              DBProvider.db.insertMyWalk(MyWalk.fromWalk(walk));
+            },
+          )
+        ],
       ),
       body: OrientationBuilder(
         builder: (context, orientation) {

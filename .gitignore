@@ -40,3 +40,4 @@ lib/generated_plugin_registrant.dart
 /android/key.properties
 key.jks
 .env
+play_store_key.json

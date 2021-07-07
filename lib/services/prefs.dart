@@ -55,4 +55,9 @@ class PrefsProvider {
             ? defaultValue
             : false;
   }
+
+  Future<bool?> getBooleanNullable(String key) async {
+    SharedPreferences prefs = await preferences;
+    return prefs.getBool(key);
+  }
 }

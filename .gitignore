@@ -38,6 +38,8 @@ lib/generated_plugin_registrant.dart
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
 /android/key*.properties
+/android/app/google-services.json
+/ios/GoogleService-Info.plist
 key.jks
 upload-keystore.jks
 upload_certificate.pem

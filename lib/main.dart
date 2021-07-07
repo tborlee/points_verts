@@ -2,6 +2,8 @@ import 'package:background_fetch/background_fetch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:points_verts/services/crashlytics.dart';
 import 'package:points_verts/services/database.dart';
 import 'package:points_verts/services/notification.dart';
 import 'package:points_verts/services/prefs.dart';
@@ -35,12 +37,18 @@ void backgroundFetchHeadlessTask(HeadlessTask task) async {
   }
 }
 
+Future<void> initializeFirebase() async {
+  await Firebase.initializeApp();
+  await Crashlytics.initialize();
+}
+
 void main() async {
   await dotenv.load(fileName: '.env');
   WidgetsFlutterBinding.ensureInitialized();
   //TODO: improve how we initialize these singletons (get_it package?)
   await NotificationManager.instance.plugin;
   await DBProvider.db.database;
+  await initializeFirebase();
   runApp(new MyApp());
   BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
 }

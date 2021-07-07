@@ -7,6 +7,7 @@ import 'package:points_verts/views/loading.dart';
 import 'package:points_verts/views/walks/walk_list_error.dart';
 import 'package:points_verts/views/walks/walk_utils.dart';
 
+import 'services/crashlytics.dart';
 import 'views/directory/walk_directory_view.dart';
 import 'views/settings/settings.dart';
 import 'views/walks/walks_view.dart';
@@ -25,6 +26,7 @@ class _WalksHomeScreenState extends State<WalksHomeScreen>
 
   @override
   void initState() {
+    _crashlyticsCheck();
     fetchData().then((_) {
       _initPlatformState();
     }).catchError((err) {
@@ -64,6 +66,16 @@ class _WalksHomeScreenState extends State<WalksHomeScreen>
     if (state == AppLifecycleState.resumed) {
       fetchData();
     }
+  }
+
+  Future<void> _crashlyticsCheck() async {
+    PrefsProvider.prefs
+        .getBooleanNullable("crashlytics_enabled")
+        .then((prompt) async {
+      if (prompt == null) {
+        Crashlytics.crashlyticsPrompt(context);
+      }
+    });
   }
 
   Future<void> _initPlatformState() async {
